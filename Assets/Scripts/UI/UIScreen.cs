@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum ScreenId { Title, MainMenu, LevelSelect, Characters, Shop, Settings, Game, Pause, Results, Credits }
+public enum ScreenId { Title, MainMenu, LevelSelect, Characters, Shop, Settings, Game, Pause, Results, Credits, Loading }
 
 // One screen of the menu. UIManager decides when it shows; the screen only fills itself in.
 [RequireComponent(typeof(CanvasGroup))]

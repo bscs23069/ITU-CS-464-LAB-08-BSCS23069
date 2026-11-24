@@ -5,6 +5,8 @@ using UnityEngine.InputSystem;
 // One machine for every screen (Lecture 08): a stack of screens.
 // Push goes deeper (slides in from the right), Back comes out (slides back to the right),
 // an overlay pops up over the screen below, and only this script touches the panels and the clock.
+// Lab 08: it also decides what the audio does after every move (AfterMove), and starts a level
+// through the Loading screen (LoadLevel).
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
@@ -38,7 +40,7 @@ public class UIManager : MonoBehaviour
         Reset(title);
         title.gameObject.SetActive(true);
         title.OnEnter();
-        UpdateClock();
+        AfterMove();
     }
 
     public UIScreen Get(ScreenId id)
@@ -64,9 +66,13 @@ public class UIManager : MonoBehaviour
         stack.Add(to);
         from.Group.interactable = false;
         from.OnExit();
-        if (to.overlay) PopIn(to);
+        if (to.overlay)
+        {
+            if (to.id == ScreenId.Pause) UiSounds.Pause(); else UiSounds.Open();
+            PopIn(to);
+        }
         else SlideIn(to, from, forward: true);
-        UpdateClock();
+        AfterMove();
     }
 
     // come back one level
@@ -77,10 +83,17 @@ public class UIManager : MonoBehaviour
         stack.RemoveAt(stack.Count - 1);
         var to = Top;
         from.OnExit();
-        Sfx.Back();
-        if (from.overlay) PopOut(from, to);
-        else SlideOut(from, to);
-        UpdateClock();
+        if (from.overlay)
+        {
+            if (from.id == ScreenId.Pause) UiSounds.Resume(); else UiSounds.Close();
+            PopOut(from, to);
+        }
+        else
+        {
+            UiSounds.Back();   // back / cancel
+            SlideOut(from, to);
+        }
+        AfterMove();
     }
 
     // swap the top screen for another at the same level (Title → Main Menu)
@@ -92,7 +105,7 @@ public class UIManager : MonoBehaviour
         stack[stack.Count - 1] = to;
         from.OnExit();
         CrossFade(from, to);
-        UpdateClock();
+        AfterMove();
     }
 
     // straight back to the main menu from anywhere (Quit, Menu)
@@ -109,9 +122,9 @@ public class UIManager : MonoBehaviour
         for (int i = stack.Count - 2; i > home; i--) { stack[i].OnExit(); stack[i].gameObject.SetActive(false); }
         stack.RemoveRange(home + 1, stack.Count - home - 1);
         from.OnExit();
-        Sfx.Back();
+        UiSounds.Back();
         SlideOut(from, Top);
-        UpdateClock();
+        AfterMove();
     }
 
     // ---------- the motion ----------
@@ -132,7 +145,7 @@ public class UIManager : MonoBehaviour
     void SlideIn(UIScreen to, UIScreen from, bool forward)
     {
         Begin();
-        Sfx.Whoosh();
+        UiSounds.Whoosh();
         Reset(to);
         to.transform.SetAsLastSibling();
         to.Rect.anchoredPosition = new Vector2(Width, 0f);
@@ -154,7 +167,7 @@ public class UIManager : MonoBehaviour
     void SlideOut(UIScreen from, UIScreen to)
     {
         Begin();
-        Sfx.Whoosh();
+        UiSounds.Whoosh();
         from.transform.SetAsLastSibling();
         if (!to.gameObject.activeSelf)
         {
@@ -226,10 +239,40 @@ public class UIManager : MonoBehaviour
         Tween.Fade(from.Group, 0f, 0.3f, Ease.InQuad, () => { from.gameObject.SetActive(false); Reset(from); });
     }
 
-    // the clock runs only while the game itself is on top: menus and pause freeze it
-    void UpdateClock()
+    // start a level: everything above the level grid goes (an old game and its results),
+    // and the Loading screen fades in. It loads the Gameplay scene and then opens the Game screen.
+    public void LoadLevel(int level)
     {
-        Time.timeScale = Top != null && Top.id == ScreenId.Game ? 1f : 0f;
+        if (Busy) return;
+        int keep = stack.FindIndex(s => s.id == ScreenId.LevelSelect);
+        var from = Top;
+        for (int i = stack.Count - 2; i > keep; i--) { stack[i].OnExit(); stack[i].gameObject.SetActive(false); }
+        stack.RemoveRange(keep + 1, stack.Count - keep - 1);
+        from.OnExit();
+        var loading = Get<LoadingScreen>();
+        loading.Level = level;
+        stack.Add(loading);
+        CrossFade(from, loading);
+        AfterMove();
+    }
+
+    // After every move: the clock, the audio and the Gameplay scene follow the screen on top.
+    // - The clock runs only while the game itself is on top: menus and Pause freeze it.
+    // - Paused (Pause, or Settings opened from Pause): the game's sound effects pause with AudioListener.pause.
+    //   The UI and the music ignore that pause on purpose: buttons still click, and the music plays on, softer.
+    // - The music is the game track while a run is on screen, and crossfades back to the menu track
+    //   for Results and the menus.
+    // - Once the game has left the stack, the Gameplay scene is unloaded.
+    void AfterMove()
+    {
+        bool playing = Top != null && Top.id == ScreenId.Game;
+        bool inGame = stack.Exists(s => s.id == ScreenId.Game);
+        bool paused = inGame && !playing && Top.id != ScreenId.Results;
+        Time.timeScale = playing ? 1f : 0f;
+        AudioListener.pause = paused;
+        if (MusicPlayer.Instance != null)
+            MusicPlayer.Instance.Set(inGame && Top.id != ScreenId.Results ? MusicPlayer.Track.Game : MusicPlayer.Track.Menu, paused);
+        if (!inGame && Top != null && Top.id != ScreenId.Loading) GameScene.Unload();
     }
 
     void Update()
@@ -243,7 +286,8 @@ public class UIManager : MonoBehaviour
             case ScreenId.Game: Push(ScreenId.Pause); break;
             case ScreenId.Title:
             case ScreenId.MainMenu:
-            case ScreenId.Results: break;   // these have their own buttons forward
+            case ScreenId.Results:
+            case ScreenId.Loading: break;   // these have their own way forward
             default: Back(); break;
         }
     }

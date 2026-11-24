@@ -39,8 +39,8 @@ public class ShopScreen : UIScreen
         if (GameData.Coins < h.price)
         {
             // not enough: the button and the coin counter both say no, and the toast says how many more
-            Sfx.Error();
-            Sfx.Buzz();
+            UiSounds.Error();
+            UiSounds.Buzz();
             Tween.Shake(r.BuyRect, 14f, 0.4f);
             coinPill.Deny();
             Toast.Show($"You need {h.price - GameData.Coins} more coins");
@@ -48,7 +48,7 @@ public class ShopScreen : UIScreen
         }
         GameData.Coins -= h.price;      // the counter counts down by itself
         GameData.Own(r.hopper);
-        Sfx.Buy();
+        UiSounds.Buy();
         r.Refresh();
         r.Badge.localScale = Vector3.zero;
         Tween.Scale(r.Badge, Vector3.one, 0.4f, Ease.OutBack);
@@ -59,14 +59,14 @@ public class ShopScreen : UIScreen
     {
         if (GameData.GiftClaimed)
         {
-            Sfx.Error();
+            UiSounds.Error();
             Tween.Shake((RectTransform)giftButton.transform, 10f, 0.3f);
             Toast.Show("Come back tomorrow for another gift");
             return;
         }
         GameData.GiftClaimed = true;
         GameData.Coins += 100;
-        Sfx.Coin();
+        UiSounds.Coin();
         Refresh();
         Tween.PunchScale(giftButton.transform, 0.15f, 0.35f);
     }

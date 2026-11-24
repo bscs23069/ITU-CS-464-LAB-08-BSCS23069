@@ -8,6 +8,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/SkyHop.unity
     guid: 9ef44e297a914f84cbfea9f7e4ccca66
+  - enabled: 1
+    path: Assets/Scenes/Gameplay.unity
+    guid: be5f48148b2366546bb21a5350af069a
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: ec294fa50ae748d4f94fabb9ca5c08a2, type: 3}
   m_UseUCBPForAssetBundles: 0

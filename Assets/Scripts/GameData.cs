@@ -65,10 +65,19 @@ public static class GameData
         set { PlayerPrefs.SetInt("gift", value ? 1 : 0); Save(); }
     }
 
-    public static float Music { get => PlayerPrefs.GetFloat("music", 0.6f); set => PlayerPrefs.SetFloat("music", value); }
-    public static float Sound { get => PlayerPrefs.GetFloat("sound", 0.8f); set => PlayerPrefs.SetFloat("sound", value); }
     public static bool Vibration { get => PlayerPrefs.GetInt("vibrate", 1) == 1; set => PlayerPrefs.SetInt("vibrate", value ? 1 : 0); }
     public static bool ReduceMotion { get => PlayerPrefs.GetInt("reduceMotion", 0) == 1; set => PlayerPrefs.SetInt("reduceMotion", value ? 1 : 0); }
 
-    public static void ResetAll() { PlayerPrefs.DeleteAll(); Save(); }
+    // Reset progress clears coins, stars and hoppers, but keeps the player's settings (volumes and switches)
+    public static void ResetAll()
+    {
+        var volumes = new float[VolumeSettings.Parameters.Length];
+        for (int i = 0; i < volumes.Length; i++) volumes[i] = VolumeSettings.Get(VolumeSettings.Parameters[i]);
+        bool vibration = Vibration, reduceMotion = ReduceMotion;
+        PlayerPrefs.DeleteAll();
+        for (int i = 0; i < volumes.Length; i++) PlayerPrefs.SetFloat(VolumeSettings.Parameters[i], volumes[i]);
+        Vibration = vibration;
+        ReduceMotion = reduceMotion;
+        Save();
+    }
 }
