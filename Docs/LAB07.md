@@ -1,5 +1,7 @@
 # CS464 Lab 07 · Sky Hop menu system · Mayasa Fakhar · BSCS23069
 
+> This was my Lab 07 README, the design document for the 10 menu screens. It is kept here as it was handed in, apart from the image paths. Lab 08 changed the sound, added a Loading screen and moved the game world into its own scene: see the [Lab 08 README](../README.md).
+
 A complete mobile menu system for **Sky Hop**, my own small platformer: a round little hopper runs across the sky and you tap to jump for coins. It has 10 connected screens, all working in Unity, with eased tweens for every screen change and every important press.
 
 - **Demo video:** https://drive.google.com/file/d/16Hb2DhWvaAoxFqRqMJ2KktU4Bboq42bs/view?usp=sharing (1:18)
@@ -128,17 +130,17 @@ Each ease is chosen for what the motion has to say:
 
 **Settings → Reduce motion** turns every menu tween into a short 0.12 s ease with no overshoot, bounce or shake, for players who don't like movement.
 
-<img src="Docs/screens/transition-push.png" width="760">
+<img src="screens/transition-push.png" width="760">
 
 ---
 
 ## 1. Title
 
-<img src="Docs/screens/01-title-annotated.png" width="760">
+<img src="screens/01-title-annotated.png" width="760">
 
 | Colour | Greyscale |
 |---|---|
-| <img src="Docs/screens/01-title-colour.png" width="300"> | <img src="Docs/screens/01-title-greyscale.png" width="300"> |
+| <img src="screens/01-title-colour.png" width="300"> | <img src="screens/01-title-greyscale.png" width="300"> |
 
 **Greyscale check:** No change needed. The logo is the lightest and largest shape, the prompt is white on dark, and the hopper stays a mid grey with its dark face.
 
@@ -154,11 +156,11 @@ Each ease is chosen for what the motion has to say:
 
 ## 2. Main menu
 
-<img src="Docs/screens/02-main-annotated.png" width="760">
+<img src="screens/02-main-annotated.png" width="760">
 
 | Colour | Greyscale |
 |---|---|
-| <img src="Docs/screens/02-main-colour.png" width="300"> | <img src="Docs/screens/02-main-greyscale.png" width="300"> |
+| <img src="screens/02-main-colour.png" width="300"> | <img src="screens/02-main-greyscale.png" width="300"> |
 
 **Greyscale check:** No change needed. Play turns light grey with dark text and stands well apart from the dark-grey secondary buttons; the pills keep light numbers on dark.
 
@@ -178,11 +180,11 @@ Each ease is chosen for what the motion has to say:
 
 ## 3. Level select
 
-<img src="Docs/screens/03-levels-annotated.png" width="760">
+<img src="screens/03-levels-annotated.png" width="760">
 
 | Colour | Greyscale |
 |---|---|
-| <img src="Docs/screens/03-levels-colour.png" width="300"> | <img src="Docs/screens/03-levels-greyscale.png" width="300"> |
+| <img src="screens/03-levels-colour.png" width="300"> | <img src="screens/03-levels-greyscale.png" width="300"> |
 
 **Greyscale check:** No change needed. Open tiles are a mid grey and locked tiles are darker, and locked ones also have a lock instead of a number. Earned stars are light, missing ones faint.
 
@@ -200,11 +202,11 @@ Each ease is chosen for what the motion has to say:
 
 ## 4. Characters
 
-<img src="Docs/screens/04-characters-annotated.png" width="760">
+<img src="screens/04-characters-annotated.png" width="760">
 
 | Colour | Greyscale |
 |---|---|
-| <img src="Docs/screens/04-characters-colour.png" width="300"> | <img src="Docs/screens/04-characters-greyscale.png" width="300"> |
+| <img src="screens/04-characters-colour.png" width="300"> | <img src="screens/04-characters-greyscale.png" width="300"> |
 
 **Greyscale check:** No change needed. The current page dot is lighter and also bigger; the locked badge has a lock icon and the price, not just its red.
 
@@ -223,11 +225,11 @@ Each ease is chosen for what the motion has to say:
 
 ## 5. Shop
 
-<img src="Docs/screens/05-shop-annotated.png" width="760">
+<img src="screens/05-shop-annotated.png" width="760">
 
 | Colour | Greyscale |
 |---|---|
-| <img src="Docs/screens/05-shop-colour.png" width="300"> | <img src="Docs/screens/05-shop-greyscale.png" width="300"> |
+| <img src="screens/05-shop-colour.png" width="300"> | <img src="screens/05-shop-greyscale.png" width="300"> |
 
 **Greyscale check:** No change needed. The gold buy buttons are light with dark text, and Owned has a tick and a word. The red flash on the coin counter is faint in grey, but the shake and the toast carry the same message.
 
@@ -246,11 +248,11 @@ Each ease is chosen for what the motion has to say:
 
 ## 6. Settings
 
-<img src="Docs/screens/06-settings-annotated.png" width="760">
+<img src="screens/06-settings-annotated.png" width="760">
 
 | Colour | Greyscale |
 |---|---|
-| <img src="Docs/screens/06-settings-colour.png" width="300"> | <img src="Docs/screens/06-settings-greyscale.png" width="300"> |
+| <img src="screens/06-settings-colour.png" width="300"> | <img src="screens/06-settings-greyscale.png" width="300"> |
 
 **Greyscale check:** **Changed.** In greyscale the red Reset button was nearly the same grey as the navy buttons, so every danger button now has a light outline (a non-colour cue). The switches already read by knob position: right and light means on.
 
@@ -269,11 +271,11 @@ Each ease is chosen for what the motion has to say:
 
 ## 7. Game (HUD)
 
-<img src="Docs/screens/07-game-annotated.png" width="760">
+<img src="screens/07-game-annotated.png" width="760">
 
 | Colour | Greyscale |
 |---|---|
-| <img src="Docs/screens/07-game-colour.png" width="300"> | <img src="Docs/screens/07-game-greyscale.png" width="300"> |
+| <img src="screens/07-game-colour.png" width="300"> | <img src="screens/07-game-greyscale.png" width="300"> |
 
 **Greyscale check:** **Changed.** The gold coins and the light sky turned the same grey, so the coins almost vanished. Each coin now sits on a dark navy disc, which shows as a dark ring on the light sky.
 
@@ -293,11 +295,11 @@ Each ease is chosen for what the motion has to say:
 
 ## 8. Pause
 
-<img src="Docs/screens/08-pause-annotated.png" width="760">
+<img src="screens/08-pause-annotated.png" width="760">
 
 | Colour | Greyscale |
 |---|---|
-| <img src="Docs/screens/08-pause-colour.png" width="300"> | <img src="Docs/screens/08-pause-greyscale.png" width="300"> |
+| <img src="screens/08-pause-colour.png" width="300"> | <img src="screens/08-pause-greyscale.png" width="300"> |
 
 **Greyscale check:** **Changed.** Quit to menu merged with Restart and Settings into one grey. It now has the light outline of the danger style, as well as being shorter, last and set apart.
 
@@ -314,11 +316,11 @@ Each ease is chosen for what the motion has to say:
 
 ## 9. Results
 
-<img src="Docs/screens/09-results-annotated.png" width="760">
+<img src="screens/09-results-annotated.png" width="760">
 
 | Colour | Greyscale |
 |---|---|
-| <img src="Docs/screens/09-results-colour.png" width="300"> | <img src="Docs/screens/09-results-greyscale.png" width="300"> |
+| <img src="screens/09-results-colour.png" width="300"> | <img src="screens/09-results-greyscale.png" width="300"> |
 
 **Greyscale check:** No change needed. Earned stars are light and the missing star dark; Next is light against the two dark icon buttons; the New best! badge keeps white text on mid grey.
 
@@ -337,11 +339,11 @@ Each ease is chosen for what the motion has to say:
 
 ## 10. Credits
 
-<img src="Docs/screens/10-credits-annotated.png" width="760">
+<img src="screens/10-credits-annotated.png" width="760">
 
 | Colour | Greyscale |
 |---|---|
-| <img src="Docs/screens/10-credits-colour.png" width="300"> | <img src="Docs/screens/10-credits-greyscale.png" width="300"> |
+| <img src="screens/10-credits-colour.png" width="300"> | <img src="screens/10-credits-greyscale.png" width="300"> |
 
 **Greyscale check:** No change needed. Section labels are a lighter muted grey and smaller than the white names, so the grouping survives without colour.
 
