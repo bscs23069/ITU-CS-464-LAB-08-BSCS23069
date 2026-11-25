@@ -209,7 +209,7 @@ A test counts the listeners on the live run:
 
 ## 8. Changes to the game
 
-- **Rocks.** Rocks with red spikes sit under some of the coin arcs. The first arc of a level never has one, the second always does, and later ones are more likely in later levels. Jumping for the coins clears the rock, so there's a reason to jump.
+- **Rocks.** Rocks with red spikes sit under some of the coin arcs. The first arc of a level never has one, the second always does, and later ones are more likely in later levels. Jumping for the coins clears the rock, so there's a reason to jump. From Level 2, a lone rock also sits in the gap after each arc, with room to land and jump again. Level 1 has 2 rocks, and every later level has 3 to 7, so from Level 2 on you can lose all three hearts.
 - **Three hearts** in the HUD. A hit costs one and gives 1.2 s when you can't be hurt again (the hopper blinks).
 - **Losing.** With no hearts left, the run ends: "Ouch!", then Results says **Out of hearts!**. You get no stars, but you keep the coins you picked up. Retry comes first, and Next only shows if the next level was already open.
 - **The HUD** is the Game screen in `SkyHop`. The world (sky, ground, coins, rocks, hopper) is in `Gameplay`. A tap anywhere on the HUD jumps.

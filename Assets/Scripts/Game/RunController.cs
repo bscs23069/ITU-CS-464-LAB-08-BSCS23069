@@ -75,23 +75,9 @@ public class RunController : MonoBehaviour
         length = 9f + level * 0.75f;
         Clear(coins);
         Clear(rocks);
-        // runs of ground coins, then an arc in the air that follows a jump, often with a rock under it
-        var rng = new System.Random(level * 97);
-        float rockChance = Mathf.Min(0.9f, 0.3f + level * 0.08f);
-        int arc = 0;
-        for (float at = 1.4f; at < length - 1f;)
-        {
-            int ground = rng.Next(2, 4);
-            for (int i = 0; i < ground; i++, at += 0.22f) Add(coins, coinTemplate, coinLayer, at, 0f);
-            at += 0.5f;
-            Add(coins, coinTemplate, coinLayer, at, 200f);
-            Add(coins, coinTemplate, coinLayer, at + 0.16f, 290f);
-            Add(coins, coinTemplate, coinLayer, at + 0.32f, 200f);
-            // the first arc never has a rock (you learn to jump for coins first), the second always has one
-            if (arc == 1 || (arc > 1 && rng.NextDouble() < rockChance)) Add(rocks, rockTemplate, rockLayer, at + 0.16f, 0f);
-            arc++;
-            at += 0.48f + 0.7f + (float)rng.NextDouble() * 0.4f;
-        }
+        Layout(level, length, out var coinSpots, out var rockSpots);
+        foreach (var c in coinSpots) Add(coins, coinTemplate, coinLayer, c.x, c.y);
+        foreach (float r in rockSpots) Add(rocks, rockTemplate, rockLayer, r, 0f);
 
         time = 0f; y = 0f; vy = 0f; grounded = true; running = false; safeUntil = -1f;
         Collected = 0;
@@ -99,6 +85,41 @@ public class RunController : MonoBehaviour
         hopperColor.color = GameData.Hoppers[GameData.Selected].color;
         Place();
         Prepared?.Invoke(level);
+    }
+
+    // Where everything goes, in seconds along the run (coins also have a height). The same level always
+    // gets the same layout. Runs of ground coins, then an arc of coins in the air that follows a jump:
+    // - the first arc never has a rock under it (you learn to jump for coins first), the second always does,
+    //   later ones more often in later levels;
+    // - from level 2, a lone rock sits in the gap after every arc but the first, with room to land and
+    //   jump again, so every level from 2 on can cost all three hearts.
+    public static void Layout(int level, float length, out List<Vector2> coinSpots, out List<float> rockSpots)
+    {
+        coinSpots = new List<Vector2>();
+        rockSpots = new List<float>();
+        var rng = new System.Random(level * 97);
+        float rockChance = Mathf.Min(0.9f, 0.3f + level * 0.08f);
+        int arc = 0;
+        for (float at = 1.4f; at < length - 1f;)
+        {
+            int ground = rng.Next(2, 4);
+            for (int i = 0; i < ground; i++, at += 0.22f) coinSpots.Add(new Vector2(at, 0f));
+            at += 0.5f;
+            coinSpots.Add(new Vector2(at, 200f));
+            coinSpots.Add(new Vector2(at + 0.16f, 290f));
+            coinSpots.Add(new Vector2(at + 0.32f, 200f));
+            if (arc == 1 || (arc > 1 && rng.NextDouble() < rockChance)) rockSpots.Add(at + 0.16f);
+            at += 0.48f;
+            if (level >= 2 && arc >= 1)
+            {
+                // land from the arc's jump, then jump again
+                at += 0.9f;
+                rockSpots.Add(at);
+                at += 0.3f;
+            }
+            arc++;
+            at += 0.7f + (float)rng.NextDouble() * 0.4f;
+        }
     }
 
     void Clear(List<Spot> list)
