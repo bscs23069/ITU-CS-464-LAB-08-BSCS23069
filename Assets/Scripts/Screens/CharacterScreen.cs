@@ -75,7 +75,7 @@ public class CharacterScreen : UIScreen
         }
         GameData.Selected = index;
         Show();
-        Sfx.Star();
+        UiSounds.Star();
         // the "selected" tick pops (OutBack) so the choice is confirmed where you were looking
         selectedBadge.transform.localScale = Vector3.zero;
         Tween.Scale(selectedBadge.transform, Vector3.one, 0.35f, Ease.OutBack);

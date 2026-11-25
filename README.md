@@ -1,374 +1,247 @@
-# CS464 Lab 07 · Sky Hop menu system · Mayasa Fakhar · BSCS23069
+# CS464 Lab 08 · Sky Hop: loading, sound and events · Mayasa Fakhar · BSCS23069
 
-A complete mobile menu system for **Sky Hop**, my own small platformer: a round little hopper runs across the sky and you tap to jump for coins. It has 10 connected screens, all working in Unity, with eased tweens for every screen change and every important press.
+For Lab 08 I built on my Lab 07 project, **Sky Hop**: a round little hopper runs across the sky, and you tap to jump for coins. All ten Lab 07 screens still work the same way, with the same tweens and the same phone layout. On top of them I added:
 
-- **Demo video:** https://drive.google.com/file/d/16Hb2DhWvaAoxFqRqMJ2KktU4Bboq42bs/view?usp=sharing (1:18)
-- **Unity:** 6000.3.27f1 (Unity 6.3), Input System, TextMesh Pro
-- **Scene:** `Assets/Scenes/SkyHop.unity` (the only scene)
+- a real **Gameplay scene**, loaded in the background behind a new **Loading** screen (screen 11);
+- **sound**: 14 UI sounds, 8 game sounds and two music loops, all going through **one Audio Mixer** with **four volume sliders**;
+- **C# events**: the run raises events and eight separate components react to them;
+- **rocks and three hearts**, so the game can hurt you and you can lose. That gives the events something real to say.
+
+| | |
+|---|---|
+| **Demo video** | https://drive.google.com/file/d/16FBRdxzlyliHA7Qz_L79z-Ur9PL07OH3/view?usp=sharing (1:32) |
+| **Unity** | 6000.3.27f1 (Unity 6.3), Input System, TextMesh Pro |
+| **Scenes** (Build Profiles → Scene List) | 0 `Assets/Scenes/SkyHop.unity`: the menus, the HUD and the audio · 1 `Assets/Scenes/Gameplay.unity`: the run |
+| **Lab 07 design document** | [Docs/LAB07.md](Docs/LAB07.md): the 10 screens, colour, type, layout and motion |
 
 ## How to run it
 
-1. Open the project folder in Unity Hub with Unity 6000.3.27f1.
-2. Open `Assets/Scenes/SkyHop.unity`.
-3. In the Game view, pick a portrait phone size, for example **1080x1920 Portrait** (add it with the + in the resolution menu if it isn't there).
-4. Press Play. Click to tap. **Esc** works like Android's back button, and **Space** also jumps in the game.
+1. Open the project folder in Unity Hub with Unity 6000.3.27f1. If Unity Hub isn't signed in, the Package Manager may say "error searching packages". That's harmless: every package the project needs is already in it.
+2. Open `Assets/Scenes/SkyHop.unity`. If you open `Gameplay.unity` and press Play instead, it switches to `SkyHop` by itself, because the game has to be loaded from the menu.
+3. In the Game view, pick a portrait size such as **1080x1920 Portrait**, and make sure **Mute Audio** is off.
+4. Press Play. A click is a tap, **Space** also jumps, and **Esc** is the back button (in the game it pauses).
 
-Progress (coins, stars, bought hoppers, settings) is saved with PlayerPrefs. **Settings → Reset progress** (tap it twice) starts again.
-
-## The 10 screens and how they connect
+## 1. Loading
 
 ```mermaid
 flowchart LR
-  T[1 Title] -->|tap| M[2 Main menu]
-  M -->|Play| L[3 Level select]
-  M -->|Hoppers| C[4 Characters]
-  M -->|Shop| S[5 Shop]
-  M -->|gear| G[6 Settings]
-  M -->|i| R[10 Credits]
-  C -->|Get in shop| S
-  L -->|open level| P[7 Game]
-  P -->|pause| Z[8 Pause]
-  Z -->|Settings| G
-  Z -->|Resume / Restart| P
-  Z -->|Quit| M
-  P -->|finish| X[9 Results]
-  X -->|Next / Retry| P
-  X -->|Home| M
+  L[3 Level select] -->|an open level| D[11 Loading]
+  D -->|scene loaded, bar at 100%| G[7 Game]
+  G -->|pause| P[8 Pause]
+  P -->|Resume / Restart| G
+  P -->|Quit| M[2 Main menu]
+  G -->|finish or out of hearts| R[9 Results]
+  R -->|Retry| G
+  R -->|Next| D
+  R -->|Home| M
 ```
 
-Every inner screen has the same back button in the top-left corner, and Esc (Android back) does the same thing. The Game screen opens Pause instead. Title, Main menu and Results lead forward with their own buttons. No screen is a dead end. A PlayMode test presses the real buttons through all ten screens and checks that each one has at least one working way out.
+- **Additive loading.** `SkyHop` stays loaded the whole time, and `Gameplay` is loaded on top of it with `LoadSceneMode.Additive`. The menus, the HUD, the mixer and the music player never reload, so the music can crossfade instead of restarting. The game world is drawn on its own canvas (sort order 0), under the menu canvas (sort order 10).
+- **`UIManager.LoadLevel(level)`** removes everything above the level grid, such as an old game and its Results, and fades in the Loading screen.
+- **`LoadingScreen`** does the loading:
+  1. If a Gameplay scene is still loaded (Next from Results), it unloads it first.
+  2. It calls `SceneManager.LoadSceneAsync("Gameplay", LoadSceneMode.Additive)` with `allowSceneActivation = false`.
+  3. Every frame it shows the real progress as a bar and a percentage. Unity's progress stops at 0.9 while it waits to switch the scene on, so `op.progress / 0.9` is the "loaded" fraction.
+  4. When the bar reaches 100%, it allows activation and waits for `isDone`. Only then does it open the Game screen.
+- **You can't get into the game early.** The test checks every frame of the load: the bar never goes backwards, the run doesn't exist before the bar is full, and the Game screen opens only at 100%.
+- **The bar has a minimum time.** My Gameplay scene is small, so it loads in a few frames. The bar shows `min(real progress, time / 0.9 s)`, so it takes at least 0.9 s and can be read. It never shows more than what has really loaded.
+- **No back button while loading.** Esc does nothing on the Loading screen, because there is nothing to go back to in the middle of a load. Leaving the game (Quit, Home, or Next on the last level) unloads the Gameplay scene.
 
-| Screen | Ways forward | Way back |
+<img src="Docs/lab08/loading.png" width="300">
+
+## 2. The Audio Mixer
+
+<img src="Docs/lab08/audio-mixer.png" width="760">
+
+`Assets/Audio/SkyHop.mixer` has one Master group with three groups under it. Each group's volume is exposed so that a slider can set it:
+
+| Group | Exposed parameter | AudioSources routed to it | Played by |
+|---|---|---|---|
+| Master | `MasterVolume` | (the other three) | |
+| Music | `MusicVolume` | Music Source A, Music Source B | `MusicPlayer` (menu scene) |
+| SFX | `SfxVolume` | SFX Voice 1–4 · SFX Preview Source | `GameSounds` (Gameplay scene) · `UiSounds` (so the SFX slider can be heard in the menus) |
+| UI | `UiVolume` | UI Source | `UiSounds` (menu scene) |
+
+There are 8 AudioSources in the whole game, and every one has its output group set. No button has its own AudioSource: every button and panel plays through the single `UiSounds` player. A test lists every AudioSource with both scenes loaded and checks its group. It also checks that there is exactly one AudioListener (on the camera in `SkyHop`).
+
+The mixer's **Update Mode is Unscaled Time**, because the menus and Pause run at `timeScale` 0.
+
+## 3. Volume sliders
+
+Settings now has four sliders, one per group: **Master, Music, Game sounds (SFX) and Menu sounds (UI)**. Each has a `VolumeSlider` component.
+
+- **Logarithmic mapping.** The slider gives 0 to 1, and `VolumeSettings.ToDecibels` turns that into decibels with `20 · log10(v)`. We hear loudness on a log scale, so this makes the middle of the slider sound like the middle. A linear mapping would put almost all the change in the last bit of the slider.
+
+  | Slider | 1 | 0.5 | 0.25 | 0.0001 or 0 |
+  |---|---|---|---|---|
+  | Mixer | 0 dB | −6.02 dB | −12.04 dB | −80 dB (muted, shows "Off") |
+
+- **Safe mute.** `log10(0)` is minus infinity, so anything at or below 0.0001 is set to −80 dB, the mixer's floor, and the row says **Off** instead of a percentage.
+- **Saved with PlayerPrefs.** The keys are the parameter names (`MasterVolume`, `MusicVolume`, `SfxVolume`, `UiVolume`). The defaults are 100%, 70%, 100% and 80%. A value is saved when you let go of the slider and when you leave Settings.
+- **Put back on start.** `VolumeSettings.Start` applies all four saved values. It does this in Start, not Awake, because `AudioMixer.SetFloat` doesn't stick in Awake. A test sets the sliders, resets the mixer to 0 dB, loads the scene again, and checks that the saved decibels come back.
+- **Hear it while you drag.** Dragging plays a short sample of that group: a click for Master and Menu sounds, a coin for Game sounds. Music is already playing.
+- **Reset progress** still clears coins, stars and hoppers, but now keeps the sound settings and the two switches.
+
+<img src="Docs/lab08/settings.png" width="300">
+
+## 4. What plays while paused
+
+`UIManager.AfterMove()` runs after every screen change and decides the clock and the audio from the screen on top:
+
+| While paused (Pause, or Settings opened from Pause) | What happens | How |
 |---|---|---|
-| 1 Title | tap anywhere → Main menu | (first screen) |
-| 2 Main menu | Play, Hoppers, Shop, Settings, Credits | (the hub) |
-| 3 Level select | an open level → Game | Back → Main menu |
-| 4 Characters | Select, or Get in shop → Shop | Back |
-| 5 Shop | Buy, Free gift | Back (to Main menu or Characters) |
-| 6 Settings | sliders, switches, Reset | Back (to Main menu or Pause) |
-| 7 Game | finish → Results, pause button → Pause | Esc → Pause |
-| 8 Pause | Resume, Restart, Settings | Quit to menu |
-| 9 Results | Next, Retry | Home → Main menu |
-| 10 Credits | (read) | Back → Main menu |
+| The game (hopper, rocks, coins, sparks, blinking) | frozen | `Time.timeScale = 0` |
+| Game sounds (SFX) | paused, and they carry on from where they stopped on Resume | `AudioListener.pause = true`. The SFX voices don't ignore it |
+| Music | keeps playing at 40% volume, so the pause feels calm, not broken | the music sources have `ignoreListenerPause`, and `MusicPlayer` ducks them over 0.35 s |
+| UI sounds | keep working, so the pause menu still clicks | the UI source has `ignoreListenerPause` |
 
-## How it's built
+Results is not a pause. The finish or "ouch" sound plays to its end, and the music crossfades back to the menu track. Restarting a run stops any game sound still ringing from the last one.
 
-- **One machine for every screen.** `UIManager` keeps a stack of screens, as in Lecture 08. Push goes one level deeper, Back comes one level out, an overlay (Pause, Results) pops up over the screen below, and Home or BackTo jumps back several levels in one slide. Only `UIManager` shows or hides panels and sets `Time.timeScale`. The clock runs only while the Game screen is on top, so every menu and Pause freezes the game.
-- **Each screen** is a `UIScreen` with `OnEnter`, `OnResume` and `OnExit`, and fills itself in when it comes in (for example the level grid reads the saved stars).
-- **Tweens.** `Tween.cs` is my own small tween helper. Each tween is a coroutine that calls an `Ease` curve every frame, in unscaled time, so menus still animate while the game is paused. A new tween on the same object and channel replaces the old one, so a fast double tap can't make two tweens fight.
-- **Input is blocked during a transition** (the root CanvasGroup's `blocksRaycasts` is off until the slide ends), so a double tap can't open two screens.
-- **Feedback on every press.** Every button sinks to 92% while held (OutQuad, 0.08 s), springs back with OutBack and makes a sound. The sounds are made in code (`Sfx.cs`), so the project needs no audio files.
+## 5. Music and the crossfade
 
-### Colour
+There are two loops, each an exact number of bars so it repeats with no gap:
 
-The palette is deep navy for the menus, with one bright colour per meaning. Hue carries the meaning, and value does the reading.
+- **Menu:** 92 bpm, a soft arpeggio over a pad (C, Am, F, G), 20.9 s.
+- **Game:** 132 bpm, kick, hi-hats, bass and a bouncy lead, 14.5 s.
 
-| Colour | Hex | Meaning |
+`MusicPlayer` has two AudioSources on the Music group. To change track, it starts the new loop on the free source and crossfades over 1.2 s with an **equal-power** curve: the new one rises on a sine while the old one falls on a cosine, so the loudness doesn't dip in the middle.
+
+| When | Music |
+|---|---|
+| Title, menus, Loading | menu loop |
+| The Game screen opens after loading | crossfade **menu → game** |
+| Pause or Settings from Pause | game loop, ducked to 40% |
+| Results (won or lost) | crossfade **game → menu** |
+| Retry from Results | crossfade **menu → game** |
+| Quit to menu | crossfade **game → menu** |
+
+## 6. Sounds
+
+All sounds play with `PlayOneShot`, so quick ones overlap instead of cutting each other off.
+
+**UI sounds** (UI group, through `UiSounds`):
+
+| Moment | Sound |
+|---|---|
+| Pointing at a button with a mouse | a very soft tick. A phone has no hover, so touches don't play it |
+| Pressing a button | a short rising click |
+| Back / cancel | a short falling click |
+| A screen sliding in or out | a soft whoosh |
+| A card opening / closing (Results) | a rising / falling pop |
+| Pause / Resume | two notes down / two notes up |
+| Not allowed (a locked level, not enough coins, Reset asking again) | a low buzz |
+| Success: buying a hopper, the free gift, each star landing | a rising arpeggio, a coin chime, a three-note chime |
+| Level complete / out of hearts | a short fanfare / a falling "aw" |
+
+**Game sounds** (SFX group, through `GameSounds` in the Gameplay scene):
+
+| Event | Sound | Pitch variation |
 |---|---|---|
-| Navy (3 steps) | `#1C2551` `#26336B` `#34468E` | background, cards, secondary buttons |
-| Teal | `#2ED3B7` | the primary action and things you control (Play, Resume, Next, the switches, the default hopper) |
-| Gold | `#FFC93C` | rewards: coins, stars, the logo, prices |
-| Red | `#D13438` | danger and "no": Quit, Reset, locked, not enough coins |
-| Sky and grass | `#5FB4F6` `#4CB86A` | only in the game world, so playing looks different from the menus |
+| Ready? / Go! | two beeps | none: they're signals |
+| Jump | a rising chirp | ±1 semitone at random |
+| Land | a soft thud | ±1 semitone |
+| Coin | a bright two-note ding | climbs a semitone for each coin picked up within 0.5 s of the last (up to +7), ±0.3 at random |
+| Hit a rock | a crunch | ±0.5 semitone |
+| Out of hearts | a falling wobble | none |
+| Finish | a short fanfare | none |
 
-Blue and gold are nearly complementary, so gold rewards stand out on navy. Teal sits next to blue, so the primary buttons belong to the palette and still pop by value. I measured the contrast with the WCAG formula:
+`GameSounds` takes its four SFX voices in turn, so changing the pitch for one sound doesn't change a sound that is still playing on another voice.
 
-| Pair | Ratio |
-|---|---|
-| White text on the background | 14.7 : 1 |
-| Muted text `#AEB8E6` on a card | 6.1 : 1 |
-| Navy text on the teal Play button | 8.9 : 1 |
-| Navy text on a gold button | 10.9 : 1 |
-| White text on the red button | 4.9 : 1 (I darkened the red from `#FF5E5B`, which was only 3.0 : 1) |
-| Gold logo on the background | 9.5 : 1 |
-| White HUD text on its dark pill over the sky | 16.8 : 1 |
+## 7. C# events
 
-Colour is never the only signal. A locked level also shows a lock, a switch also moves its knob, and "not enough coins" also shakes and shows a message.
+**The publisher is `RunController`** (in the Gameplay scene). It runs the hopper, the coins, the rocks and the rules. It doesn't play sounds, update the HUD or shake anything. When something happens, it raises an event:
 
-### Type
-
-- **Lilita One** is for headings and buttons: a round, chunky display face that fits a cheerful game.
-- **Poppins** (Regular and SemiBold) is for body text: a clean geometric sans that stays readable small.
-- Sizes go from 210 px (the title logo) down to 30 px (the version line) on a 1080-wide screen. Body text is at least 32 px.
-
-### Layout, touch and responsiveness
-
-- **Canvas Scaler:** Scale With Screen Size, reference 1080 × 1920, match 0.5. Everything is anchored to its edge: top bars to the top, the main buttons to the bottom, content to the centre. Taller and wider phones then just get more space between the groups.
-- **SafeArea.cs** fits all the buttons and text inside `Screen.safeArea`, so nothing sits under a notch or the home bar. The backgrounds stay outside it and still fill the whole screen.
-- **Touch targets:** every button is at least 130 × 130 px, about 8 mm on a typical phone. That is above Android's 48 dp (about 7.6 mm). A switch toggles from anywhere on its 860 × 150 row, and a slider can be grabbed anywhere on its 440 × 100 track. The main actions sit in the bottom half, where the thumb reaches.
-- **Consistency:** one button style for each level of importance (teal primary, navy secondary, gold for spending, red for danger). Every button has a darker lip under it so it looks pressable, and the back button is in the same corner on every inner screen.
-
-### Greyscale check
-
-For each screen I saved the colour screenshot (`NN-name-colour.png`) and a greyscale copy beside it (`NN-name-greyscale.png`), converted by luminance (the same as GIMP's Colors > Desaturate > Luminance). Then I checked that headings, body text, buttons, backgrounds, and the selected and disabled states were still apart without hue.
-
-The check found two real problems, and I fixed both with a non-colour cue rather than by changing hue:
-
-- **Danger buttons** (Quit to menu, Reset progress): the red and the navy buttons were nearly the same grey. Every danger button now has a light outline.
-- **Coins in the game:** the gold coins disappeared into the light sky. Each coin now sits on a dark disc.
-
-I took the screenshots again after the fixes. Each screen's section below has its annotated colour image, the colour original, the greyscale copy and one line on what the check found.
-
-### Motion
-
-Each ease is chosen for what the motion has to say:
-
-| Ease | Used for | Why |
+| Event | Raised when | Listeners |
 |---|---|---|
-| OutCubic | a screen sliding in, counters counting up | arrives fast and settles: the eye lands on the result |
-| InCubic / InQuad | a screen or card leaving | leaves fast, so it's out of the way |
-| InOutQuad | the old screen stepping back, the switch knob | moves between two resting places |
-| OutBack | overlays, staggered buttons, stars, badges | overshoots a little: "this is new, look here" |
-| InBack | an overlay closing | pulls back before it goes |
-| OutBounce | the logo on the title | playful, sets the tone |
-| InOutSine | idle floats and the "tap to start" pulse | slow and calm, never distracting |
-| Shake (damped sine) | locked level, not enough coins, reset asks again | the "no" gesture |
-| Punch | the coin counter when something changes | "this number just changed" |
-| Linear | the credits roll | an even reading speed, so no easing on purpose |
-
-**Settings → Reduce motion** turns every menu tween into a short 0.12 s ease with no overshoot, bounce or shake, for players who don't like movement.
-
-<img src="Docs/screens/transition-push.png" width="760">
-
----
-
-## 1. Title
-
-<img src="Docs/screens/01-title-annotated.png" width="760">
-
-| Colour | Greyscale |
-|---|---|
-| <img src="Docs/screens/01-title-colour.png" width="300"> | <img src="Docs/screens/01-title-greyscale.png" width="300"> |
-
-**Greyscale check:** No change needed. The logo is the lightest and largest shape, the prompt is white on dark, and the hopper stays a mid grey with its dark face.
-
-**Purpose:** the first impression: the game's name, its hero and one clear thing to do.
-
-**Principles and techniques:** a strong hierarchy (logo, then hopper, then prompt, then the tiny version line). The whole screen is the button, the biggest possible touch target. Gold on navy is 9.5:1, and the hero is teal, the "you control this" colour.
-
-**Tweens:**
-- The logo drops in with **OutBounce** (0.9 s). It's playful and gives the game its tone.
-- The hopper pops in with **OutBack** (0.45 s, after 0.6 s), then floats on **InOutSine**.
-- "Tap to start" fades in last (after 1 s) and breathes. It shows up only when the screen is ready, so you know what to do.
-- Going to the main menu is a **cross-fade with a slight zoom** (1.06 to 1, OutCubic), because they are the same level, not deeper.
-
-## 2. Main menu
-
-<img src="Docs/screens/02-main-annotated.png" width="760">
-
-| Colour | Greyscale |
-|---|---|
-| <img src="Docs/screens/02-main-colour.png" width="300"> | <img src="Docs/screens/02-main-greyscale.png" width="300"> |
-
-**Greyscale check:** No change needed. Play turns light grey with dark text and stands well apart from the dark-grey secondary buttons; the pills keep light numbers on dark.
-
-**Purpose:** the hub. Play is one tap away, and so is everything else.
-
-**Principles and techniques:**
-- Play is the biggest and brightest button, in the thumb zone (Fitts's law: big and close).
-- The secondary actions (Hoppers, Shop) are grouped in a row under it.
-- The utilities (credits, settings) are small icons in the corner.
-- Coins and stars are grouped top-left in matching pills.
-- The hopper shown is the one you picked, so the screen reflects your choices.
-
-**Tweens:**
-- The five buttons pop in **staggered with OutBack**, 60 ms apart, Play first, so the eye follows them in order of importance.
-- The coin and star pills **count with OutCubic and Punch** whenever the number changes.
-- Every button opens its screen with the **push slide** shown above.
-
-## 3. Level select
-
-<img src="Docs/screens/03-levels-annotated.png" width="760">
-
-| Colour | Greyscale |
-|---|---|
-| <img src="Docs/screens/03-levels-colour.png" width="300"> | <img src="Docs/screens/03-levels-greyscale.png" width="300"> |
-
-**Greyscale check:** No change needed. Open tiles are a mid grey and locked tiles are darker, and locked ones also have a lock instead of a number. Earned stars are light, missing ones faint.
-
-**Purpose:** choose one of 12 levels and see your progress.
-
-**Principles and techniques:**
-- A 3 × 4 grid with equal tiles and gaps, aligned to the centre line.
-- Open levels show their number and stars (gold for earned, faint for missing).
-- Locked levels are darker and show a lock instead of a number. The lock shape tells you as well as the colour.
-- A hint line explains the rule, and the star total sits top-right.
-
-**Tweens:**
-- The tiles pop in **one by one in reading order** (OutBack, 35 ms apart).
-- Tapping a locked tile plays a **Shake** and a buzz, and a toast says which level to finish first: feedback that says *why*.
-
-## 4. Characters
-
-<img src="Docs/screens/04-characters-annotated.png" width="760">
-
-| Colour | Greyscale |
-|---|---|
-| <img src="Docs/screens/04-characters-colour.png" width="300"> | <img src="Docs/screens/04-characters-greyscale.png" width="300"> |
-
-**Greyscale check:** No change needed. The current page dot is lighter and also bigger; the locked badge has a lock icon and the price, not just its red.
-
-**Purpose:** browse the five hoppers and pick one to play as.
-
-**Principles and techniques:**
-- One card at a time, with the picture, the name (heading font) and a muted blurb.
-- Large arrows sit at both edges for the thumbs, and page dots show where you are.
-- A red badge with a lock and the price marks a hopper you don't own yet.
-- The action button's label changes with the state: Select, Selected, or Get in shop. "Get in shop" leads to the Shop, which connects the two screens logically.
-
-**Tweens:**
-- Changing hopper slides the card out the way you pressed (**InQuad**, 0.14 s, fast exit) and the next one in from the other side (**OutCubic**, 0.26 s). The direction matches the arrow.
-- The current dot grows with **OutQuad**.
-- Selecting pops the teal tick with **OutBack** and plays a sound, confirming the choice where you were looking.
-
-## 5. Shop
-
-<img src="Docs/screens/05-shop-annotated.png" width="760">
-
-| Colour | Greyscale |
-|---|---|
-| <img src="Docs/screens/05-shop-colour.png" width="300"> | <img src="Docs/screens/05-shop-greyscale.png" width="300"> |
-
-**Greyscale check:** No change needed. The gold buy buttons are light with dark text, and Owned has a tick and a word. The red flash on the coin counter is faint in grey, but the shake and the toast carry the same message.
-
-**Purpose:** spend coins on new hoppers, and collect a free gift once.
-
-**Principles and techniques:**
-- The gift is first and in gold.
-- Each row is the hopper, its name and a gold buy button with the price on it, so the price is the thing you press (affordance).
-- Owned rows swap the button for a teal "Owned" badge.
-- The coin balance is in the top-right.
-
-**Tweens:**
-- Rows pop in staggered with **OutBack**.
-- **Buying:** the coin counter counts down with **OutCubic**, the "Owned" badge pops with **OutBack**, a happy arpeggio plays, and a toast says to pick the hopper in Characters.
-- **Not enough coins:** the button **shakes**, the counter flashes red and shakes, and a toast says how many coins are missing. The screenshot shows that moment.
-
-## 6. Settings
-
-<img src="Docs/screens/06-settings-annotated.png" width="760">
-
-| Colour | Greyscale |
-|---|---|
-| <img src="Docs/screens/06-settings-colour.png" width="300"> | <img src="Docs/screens/06-settings-greyscale.png" width="300"> |
-
-**Greyscale check:** **Changed.** In greyscale the red Reset button was nearly the same grey as the navy buttons, so every danger button now has a light outline (a non-colour cue). The switches already read by knob position: right and light means on.
-
-**Purpose:** sound volume, vibration, reduce motion and resetting progress. It opens from the main menu and from Pause, and Back returns to whichever one opened it.
-
-**Principles and techniques:**
-- The settings are grouped on cards with small-caps headings, and each row is an icon, a label and its control, aligned in two columns.
-- The sliders have 80 px handles.
-- The switches show on and off by knob position as well as colour, and the whole row is the tap target.
-- The destructive Reset is red and alone at the bottom, away from the other settings, and it asks again before acting.
-
-**Tweens:**
-- The groups pop in staggered (**OutBack**).
-- The switch knob slides with **InOutQuad** (0.22 s) while the track blends from navy to teal.
-- The first tap on Reset turns it darker red, **shakes** it and changes the label to "Tap again to reset". After 3 s with no second tap it goes back.
-
-## 7. Game (HUD)
-
-<img src="Docs/screens/07-game-annotated.png" width="760">
-
-| Colour | Greyscale |
-|---|---|
-| <img src="Docs/screens/07-game-colour.png" width="300"> | <img src="Docs/screens/07-game-greyscale.png" width="300"> |
-
-**Greyscale check:** **Changed.** The gold coins and the light sky turned the same grey, so the coins almost vanished. Each coin now sits on a dark navy disc, which shows as a dark ring on the light sky.
-
-**Purpose:** the game itself, small but playable. The hopper runs by itself, and a tap anywhere makes it jump. Ground coins are free, air coins need a jump, and the share you collect decides 1 to 3 stars. It is there so Pause and Results have a real game to sit on.
-
-**Principles and techniques:**
-- The world is bright sky and grass, unlike the dark menus, so "playing" looks different from "choosing".
-- The HUD stays at the edges on dark pills (16.8:1), and the middle is clear for the action.
-- Pause is top-right in the same style as the menu buttons.
-- The gold progress bar shows how far is left.
-
-**Tweens:**
-- A "Ready?" / "Go!" banner pops with **OutBack**.
-- The hopper stretches on take-off and squashes on landing (**OutBack** back to round).
-- A collected coin scales up and vanishes, and the counter **punches**.
-- These run on the game clock, so Pause freezes them mid-move.
-
-## 8. Pause
-
-<img src="Docs/screens/08-pause-annotated.png" width="760">
-
-| Colour | Greyscale |
-|---|---|
-| <img src="Docs/screens/08-pause-colour.png" width="300"> | <img src="Docs/screens/08-pause-greyscale.png" width="300"> |
-
-**Greyscale check:** **Changed.** Quit to menu merged with Restart and Settings into one grey. It now has the light outline of the danger style, as well as being shorter, last and set apart.
-
-**Purpose:** stop the game and choose to resume, restart, change settings or quit.
-
-**Principles and techniques:**
-- An overlay: the frozen game stays visible behind a dim, so you know where you'll go back to.
-- The buttons are ordered by how likely you are to want them: Resume (biggest, teal), then Restart and Settings (navy), then Quit (red, shortest, with a gap above it, so it's never hit by accident).
-
-**Tweens:**
-- The dim fades in (**OutQuad**, 0.2 s), and the card pops from 80% with **OutBack** (0.3 s). That reads as "on top of the game", not a new place.
-- The buttons stagger in after the card.
-- Closing reverses it with **InBack**, and the game clock starts again.
-
-## 9. Results
-
-<img src="Docs/screens/09-results-annotated.png" width="760">
-
-| Colour | Greyscale |
-|---|---|
-| <img src="Docs/screens/09-results-colour.png" width="300"> | <img src="Docs/screens/09-results-greyscale.png" width="300"> |
-
-**Greyscale check:** No change needed. Earned stars are light and the missing star dark; Next is light against the two dark icon buttons; the New best! badge keeps white text on mid grey.
-
-**Purpose:** show how the level went (stars, coins, a new best) and offer the next step.
-
-**Principles and techniques:**
-- The stars are the biggest thing on the card, and the middle star is bigger and higher.
-- Next is the primary action (teal, widest, on the right under the thumb). Home and Retry are small icon buttons.
-- On the last level, Next becomes "Levels".
-
-**Tweens:**
-- The stars land **one by one** (OutBack, 0.3 s apart), each with a rising note.
-- The coins **count up with OutCubic** (0.8 s).
-- "New best!" pops in last, only when you beat your record.
-- The buttons arrive after the celebration, so the result is seen first.
-
-## 10. Credits
-
-<img src="Docs/screens/10-credits-annotated.png" width="760">
-
-| Colour | Greyscale |
-|---|---|
-| <img src="Docs/screens/10-credits-colour.png" width="300"> | <img src="Docs/screens/10-credits-greyscale.png" width="300"> |
-
-**Greyscale check:** No change needed. Section labels are a lighter muted grey and smaller than the white names, so the grouping survives without colour.
-
-**Purpose:** say who made the game, and credit the fonts and the games that inspired the menus.
-
-**Principles and techniques:** the same header and back button as every inner screen. Each section has a muted label and white names, centred, and a mask keeps the text inside its frame.
-
-**Tweens:** the text rolls up at a steady 70 px/s with **Linear** motion, on purpose: credits are read, and an even speed is easiest to read. Holding a finger on the list stops it.
-
----
+| `Prepared(int level)` | a run is laid out | `HudCoins`, `HudHearts`, `GameSounds`, `HopperFeedback` |
+| `Started()` | "Go!" | `GameSounds` |
+| `Jumped()` / `Landed()` | take-off / touch-down | `GameSounds`, `HopperFeedback` |
+| `CoinCollected(int count, Vector2 at)` | a coin is picked up | `HudCoins` (counter + Punch), `GameSounds` (ding), `CoinBurst` (gold sparks) |
+| `Damaged(int hearts, int max)` | the hopper hits a rock | `HudHearts` (a heart goes dark and pops), `HitFlash` (red screen flash), `GameSounds` (crunch), `HopperFeedback` (blinks while it can't be hurt), `WorldShake` (the world shakes) |
+| `Died()` | the last heart goes | `GameScreen` ("Ouch!", then Results), `GameSounds`, `WorldShake` |
+| `Won(RunResult)` | the end of the level | `GameScreen` ("Finish!", then Results), `GameSounds` |
+
+That is eight separate listener components, and none of them knows about the others. Four live in the Gameplay scene with the run, and four are part of the HUD in the menu scene. The HUD ones find the run through `RunController.Current` when the Game screen opens, which only happens after the scene has loaded. Every listener subscribes with `+=` in `OnEnable` and unsubscribes with `-=` in `OnDisable`. Every event is raised with `?.Invoke(...)`, so an event with no listeners is safe.
+
+**One event, from declaration to listener:**
+
+```csharp
+// RunController.cs: the publisher
+public event Action<int, int> Damaged;           // hearts left, most hearts
+
+void HitRocks()
+{
+    ...
+    Hearts--;
+    safeUntil = time + SafeAfterHit;
+    Damaged?.Invoke(Hearts, MaxHearts);
+    if (Hearts <= 0)
+    {
+        running = false;
+        Died?.Invoke();
+    }
+}
+```
+
+```csharp
+// HudHearts.cs: one of the five listeners
+void OnEnable()
+{
+    run = RunController.Current;
+    if (run == null) return;
+    run.Prepared += OnPrepared;
+    run.Damaged += OnDamaged;
+}
+
+void OnDisable()
+{
+    if (run == null) return;
+    run.Prepared -= OnPrepared;
+    run.Damaged -= OnDamaged;
+    run = null;
+}
+```
+
+A test counts the listeners on the live run:
+- `Damaged` has 5, `CoinCollected` has 3 and `Won` has 2.
+- One real hit darkens the third heart and flashes the screen.
+- The moment you quit, the HUD's listeners let go and only the Gameplay scene's own 3 are left. Then the run is destroyed with its scene.
+
+## 8. Changes to the game
+
+- **Rocks.** Rocks with red spikes sit under some of the coin arcs. The first arc of a level never has one, the second always does, and later ones are more likely in later levels. Jumping for the coins clears the rock, so there's a reason to jump. From Level 2, a lone rock also sits in the gap after each arc, with room to land and jump again. Level 1 has 2 rocks, and every later level has 3 to 7, so from Level 2 on you can lose all three hearts.
+- **Three hearts** in the HUD. A hit costs one and gives 1.2 s when you can't be hurt again (the hopper blinks).
+- **Losing.** With no hearts left, the run ends: "Ouch!", then Results says **Out of hearts!**. You get no stars, but you keep the coins you picked up. Retry comes first, and Next only shows if the next level was already open.
+- **The HUD** is the Game screen in `SkyHop`. The world (sky, ground, coins, rocks, hopper) is in `Gameplay`. A tap anywhere on the HUD jumps.
+- On the last level, Results' Next button now says **Done**: "Levels" didn't fit on the button.
+
+| Hit: flash, a dark heart, the hopper blinking | Pause over the game | Level complete | Out of hearts |
+|---|---|---|---|
+| <img src="Docs/lab08/game-hit.png" width="200"> | <img src="Docs/lab08/pause.png" width="200"> | <img src="Docs/lab08/results.png" width="200"> | <img src="Docs/lab08/results-lost.png" width="200"> |
 
 ## Tests
 
-`Assets/Tests` isn't in the repo, but I ran two PlayMode tests on the final version:
+The tests (`Assets/Tests`) aren't in the repo, but I ran five PlayMode tests on the final version. Each one fails on any error in the Console.
 
-- **All ten screens connect with no dead ends.** The test presses the real buttons: Title, Main menu, Level select and back, then Characters. A locked hopper goes to the Shop: buying Berry (150) works, buying Mint (250) is refused with nothing spent, and the gift adds 100. Then it selects Berry, opens Settings and Credits, and taps a locked level (stays put). Level 1 starts the game (timeScale 1). Then it tests Pause (timeScale 0), Settings from Pause and back, Resume, playing to the end, Results, Next to level 2, and Quit to the main menu. Every screen had at least one working button, and all 10 were visited.
-- **Screenshots for this document.** The same flow, capturing each screen at 1080 × 1920.
+1. **Full flow, with no dead ends.** The test presses the real buttons:
+   - Title and Main menu, then Characters, buying in the Shop, Settings (4 sliders) and Credits.
+   - A locked level, then Level 1 through Loading, checked frame by frame.
+   - Every AudioSource and its group, and one AudioListener.
+   - Pause: game sounds paused, music ducked and still playing. Then Settings from Pause, and Resume.
+   - Playing to the end, Results (music back to the menu track), Next through Loading into a fresh Level 2.
+   - Quit: the Gameplay scene unloads, the menu music plays, and nothing is left paused.
+   - All 11 screens were visited.
+2. **Run events reach independent listeners**, as in section 7.
+3. **Three hits lose the run.** Level 12 is played without jumping: 3 Damaged events, 1 Died event, "Out of hearts!", 0 stars. Retry starts again with full hearts.
+4. **Volumes are decibels and survive a restart**, as in section 3. Reset progress keeps them.
+5. **Screenshots for this README.**
 
-## Credits and references
+Before handing in, I also cloned the repository into a different folder and checked that it opens, compiles, loads the game and plays the sounds through the mixer.
 
-- **Design, code, layout and sprites:** Mayasa Fakhar. Every icon, the hopper and the backgrounds were drawn in code with Python (Pillow). No AI-generated images.
-- **Fonts:** [Lilita One](https://fonts.google.com/specimen/Lilita+One) by Juan Montoreano and [Poppins](https://fonts.google.com/specimen/Poppins) by Indian Type Foundry, both under the SIL Open Font License. The licences are in `Assets/Fonts`.
-- **Sound:** made in code at runtime (`Sfx.cs`).
-- **TextMesh Pro Essential Resources** (in `Assets/TextMesh Pro`): Unity's own package, including its LiberationSans font.
-- **Inspiration:**
-  - *Crossy Road* (Hipster Whale): the one-character-at-a-time carousel.
-  - *Cut the Rope* (ZeptoLab): the level grid with stars and locks.
-  - *Alto's Adventure* (Snowman): the calm pause and settings cards.
-  - Nothing was copied from them, only the ideas.
-- **Course:** CS464 Lecture 08 (colour, UI and menus: HSV, harmonies, contrast, Fitts's law, Canvas anchors, one state machine for every screen, pausing properly) and the easing lab.
+## Credits
+
+- **Sound and music:** I made every sound effect and both music loops for this game. They are synthesised in Python with numpy from sine, triangle and square waves and filtered noise, and saved as WAV files in `Assets/Audio`. There is **no third-party audio** in the project.
+- **Fonts:** [Lilita One](https://fonts.google.com/specimen/Lilita+One) by Juan Montoreano and [Poppins](https://fonts.google.com/specimen/Poppins) by Indian Type Foundry, both under the SIL Open Font License (the licences are in `Assets/Fonts`).
+- **Sprites and icons:** drawn in code with Python (Pillow) for this project, including the new Rock and Spikes sprites.
+- **TextMesh Pro Essential Resources:** Unity's own package.
+- **Course:** CS464 Lecture 09 (loading scenes asynchronously, AudioSources and the Audio Mixer, decibels, PlayOneShot and pitch variation, pausing audio, C# events) and Lecture 08 for the menu system it builds on.

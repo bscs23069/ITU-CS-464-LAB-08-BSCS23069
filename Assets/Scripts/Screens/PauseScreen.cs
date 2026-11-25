@@ -1,6 +1,7 @@
 using UnityEngine;
 
 // 8. Pause: a card over the frozen game. Resume is the biggest button, Quit the quietest.
+// While it's open the game's sounds are paused and the music plays on, softer (UIManager decides).
 public class PauseScreen : UIScreen
 {
     [SerializeField] Transform[] buttons;

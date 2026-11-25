@@ -27,13 +27,13 @@ public class LevelSelectScreen : UIScreen
         if (!cell.Open)
         {
             // locked: shake "no" and say why
-            Sfx.Error();
-            Sfx.Buzz();
+            UiSounds.Error();
+            UiSounds.Buzz();
             Tween.Shake((RectTransform)cell.transform, 16f, 0.4f);
             Toast.Show($"Finish level {level - 1} first");
             return;
         }
-        UIManager.Instance.Get<GameScreen>().Prepare(level);
-        UIManager.Instance.Push(ScreenId.Game);
+        // the game opens through the loading screen, which loads the Gameplay scene
+        UIManager.Instance.LoadLevel(level);
     }
 }
