@@ -9,7 +9,7 @@ For Lab 08 I built on my Lab 07 project, **Sky Hop**: a round little hopper runs
 
 | | |
 |---|---|
-| **Demo video** | [VIDEO LINK] |
+| **Demo video** | https://drive.google.com/file/d/16FBRdxzlyliHA7Qz_L79z-Ur9PL07OH3/view?usp=sharing (1:32) |
 | **Unity** | 6000.3.27f1 (Unity 6.3), Input System, TextMesh Pro |
 | **Scenes** (Build Profiles → Scene List) | 0 `Assets/Scenes/SkyHop.unity`: the menus, the HUD and the audio · 1 `Assets/Scenes/Gameplay.unity`: the run |
 | **Lab 07 design document** | [Docs/LAB07.md](Docs/LAB07.md): the 10 screens, colour, type, layout and motion |
